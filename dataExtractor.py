@@ -1,4 +1,5 @@
-import csv, numpy as np
+import string, csv, numpy as np
+from textLearning import tfidfColumn
 
 #Count the words in a field
 def charCounter(row, column):
@@ -31,17 +32,16 @@ def getNumpyArray():
 	return np.asarray(result)
 
 def loadDataset():
+	global dataset
 	with open('prova.csv', 'rU') as csvfile:
-		global dataset
 		dataset = list(csv.reader(csvfile, skipinitialspace=True, delimiter =";"))
-		return getNumpyArray()
+	# return getNumpyArray()
 
 
-
-
-
-
-
-
-
-
+def processData(testBeginIndex, target):
+	loadDataset()
+	formatted_data = getNumpyArray()
+	label_train = formatted_data[:testBeginIndex, np.newaxis, target]
+	label_test = formatted_data[testBeginIndex:, np.newaxis, target]
+	feature_train, feature_test = tfidfColumn(dataset, testBeginIndex, 0, label_train)
+	return feature_train, feature_test, label_train, label_test
