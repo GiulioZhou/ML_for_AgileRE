@@ -18,22 +18,39 @@ def textStemmer(text):
 			stemmed = stemmed + stemmer.stem(word) + " "
 	return stemmed
 
-#Extract the stems of the words in a column
+def wordsToVector(word_data,labels_train,testBeginIndex):
+    #Vectorise the words
+    vectorizer = TfidfVectorizer(sublinear_tf=True, max_df=0.5, stop_words='english')
+    features_train_transformed = vectorizer.fit_transform(word_data[:testBeginIndex])
+    features_test_transformed  = vectorizer.transform(word_data[testBeginIndex:])
+
+    #Feature selection -> reduce the dimension of the array. However, since we don't have
+    #a big dataset, I believe that it is not really necessary
+    selector = SelectPercentile(f_classif, percentile=1)
+    selector.fit(features_train_transformed, labels_train)
+    features_train_transformed = selector.transform(features_train_transformed)
+    features_test_transformed  = selector.transform(features_test_transformed)
+
+    return features_train_transformed.toarray(), features_test_transformed.toarray()
+
+#Extract the stems of the words in a column and vectorize the results
 def tfidfColumn(dataset, testBeginIndex, index, labels_train):
     word_data = []
     for i, elem in enumerate(dataset):
         words = textStemmer(dataset[i][index])
         word_data.append(words)
 
-    #Vectorise the words
-    vectorizer = TfidfVectorizer(sublinear_tf=True, max_df=0.5, stop_words='english')
-    features_train_transformed = vectorizer.fit_transform(word_data[:testBeginIndex]).toarray()
-    features_test_transformed  = vectorizer.transform(word_data[testBeginIndex:]).toarray()
+    return wordsToVector(word_data,labels_train,testBeginIndex)
 
-    #Feature selection
-    # selector = SelectPercentile(f_classif, percentile=1)
-    # selector.fit(features_train_transformed, labels_train)
-    # features_train_transformed = selector.transform(features_train_transformed)
-    # features_test_transformed  = selector.transform(features_test_transformed)
+#Since getting the statistics of a single column did not give any interesting information,
+#Let's try with all the (text) columns together
+def tfidfAll(dataset, testBeginIndex, labels_train):
+    word_data = []
+    words = ""
+    for i, elem in enumerate(dataset):
+        for j in range(5):
+            words = words + textStemmer(dataset[i][j])
+        word_data.append(words)
+        words = ""
 
-    return features_train_transformed.toarray(), features_test_transformed.toarray()
+    return wordsToVector(word_data,labels_train, testBeginIndex)
