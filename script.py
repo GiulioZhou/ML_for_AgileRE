@@ -54,7 +54,7 @@ def testLinerRegression(trainx, trainy):
 
 #Support Vector Machines
 def testSVMRegression(trainx, trainy, k, c):
-	regr = svm.SVR(kernel=k, C=c)
+	regr = svm.SVR(kernel=k, C=c,gamma='auto')
 	regr.fit(trainx, trainy)
 	return regr
 
@@ -79,10 +79,12 @@ def testDTreeRegression(trainx, trainy, msl):
 
 if __name__ == "__main__":
 
-	feature_train, feature_test, label_train, label_test = processData(50,LOC)
+	target = input("Choose a target 5-8\n")
+
+	feature_train, feature_test, label_train, label_test = processData(50,target)
 
 	#reg = testLinerRegression(feature_train, label_train)
-	reg = testSVMRegression(feature_train, label_train, "linear", 300)
+	reg = testSVMRegression(feature_train, label_train, "linear", 10)
 	#reg = testNeighborsRegression(feature_train, label_train, 25, "uniform", 15)
 	#reg = testBayesRegression(feature_train, label_train)
 	#reg = testDTreeRegression(feature_train, label_train, 3)
@@ -100,6 +102,15 @@ if __name__ == "__main__":
 		reg.fit(feature_train, label_train)
 		pred = reg.predict(feature_test)
 
+	#Score -> (1- u/v) where u is the regression sum of squares, and v is the residual sum of squares
+	# u= sum((test-pred)^2) v= sum((test-testMean)^2)
 	print reg.score(feature_test, label_test)
+
+	while True:
+		number = input("Choose a user story 50-199, -1 to exit\n")
+		if number == -1 or number <50 or number >199:
+			break
+		else:
+			print reg.predict(feature_test[number-50])
 
 	display(feature_train, label_train, feature_test, label_test, pred)
