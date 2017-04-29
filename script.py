@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import numpy as np
+import xlsxwriter
 from sklearn import linear_model, svm, neighbors, tree
 
 from dataExtractor import processData
@@ -19,7 +20,6 @@ EFFORT = 8
 TEST_REV = 9
 ENTROPY = 10
 SERVICES = 11
-
 
 #Clean away the 10% of points that have the largest residual errors
 def outlierCleaner(predictions, features, targets):
@@ -77,18 +77,26 @@ def testDTreeRegression(trainx, trainy, msl):
 	regr.fit(trainx, trainy)
 	return regr
 
-if __name__ == "__main__":
+def run():
+	TRAINING_NUMBER = input("Choose the training set number (<=200)")
+	if TRAINING_NUMBER <0 or TRAINING_NUMBER>200:
+		return
+	print "Choose a target"
+	print "1-LOC"
+	print "2-New Classes"
+	print "3-Changed Classes"
+	print "4-Effort"
+	print "5-N. Tests"
+	print "6-Entropy"
+	target = input()+4
 
-	target = input("Choose a target 5-8\n")
-
-	feature_train, feature_test, label_train, label_test = processData(50,target)
+	feature_train, feature_test, label_train, label_test = processData(TRAINING_NUMBER,target)
 
 	#reg = testLinerRegression(feature_train, label_train)
-	reg = testSVMRegression(feature_train, label_train, "linear", 10)
+	reg = testSVMRegression(feature_train, label_train.ravel(), "linear", 10)
 	#reg = testNeighborsRegression(feature_train, label_train, 25, "uniform", 15)
 	#reg = testBayesRegression(feature_train, label_train)
 	#reg = testDTreeRegression(feature_train, label_train, 3)
-
 	pred = reg.predict(feature_test)
 
 	#Not so useful so far
@@ -104,13 +112,39 @@ if __name__ == "__main__":
 
 	#Score -> (1- u/v) where u is the regression sum of squares, and v is the residual sum of squares
 	# u= sum((test-pred)^2) v= sum((test-testMean)^2)
-	print reg.score(feature_test, label_test)
+	print "R^2 score (1.0 is the best score)"
+	score = reg.score(feature_test, label_test)
+	print score
 
+	#Save all the prediction in a xlsx file
+	workbook = xlsxwriter.Workbook('./partial_results/%s'%target +'_%s'%TRAINING_NUMBER+'.xlsx')
+	worksheet = workbook.add_worksheet()
+	worksheet.write(0,0,"Pred")
+	worksheet.write(0,1,"Effective")
+	worksheet.write(0,2,"Error")
+	worksheet.write(0,5,"Score")
+	worksheet.write(1,5,score)
+
+	for i in range(200-TRAINING_NUMBER):
+		effective=label_test[i]
+		prediction=int(reg.predict(feature_test[i].reshape(1,-1))[0])
+		worksheet.write(i+1,0,prediction)
+		worksheet.write(i+1,1,effective)
+		worksheet.write(i+1,2,prediction-effective)
+	workbook.close()
+
+	print "Predictions saved!"
+
+	#Provide the prediction for a specific user story
+	# while True:
+	# 	number = input("Choose a user story 50-199, -1 to exit\n")
+	# 	if number == -1 or number <TRAINING_NUMBER or number >199:
+	# 		break
+	# 	else:
+	# 		print int(reg.predict(feature_test[number-TRAINING_NUMBER])[0].reshape(-1,1))
+
+	#display(feature_train, label_train, feature_test, label_test, pred)
+
+if __name__ == "__main__":
 	while True:
-		number = input("Choose a user story 50-199, -1 to exit\n")
-		if number == -1 or number <50 or number >199:
-			break
-		else:
-			print reg.predict(feature_test[number-50])
-
-	display(feature_train, label_train, feature_test, label_test, pred)
+		run()

@@ -66,7 +66,7 @@ class TaggedLineSentence(object):
             yield TaggedDocument(words=doc.split(),tags=['%s' %i +'_%s' % (idx/5)])
 
 
-def getSemanticVector(dataset):
+def getSemanticVector(dataset,t_number):
     #Load the vocabulary if it was previously created
     try:
         model = Doc2Vec.load("doc2vec.model")
@@ -88,14 +88,14 @@ def getSemanticVector(dataset):
 
     feature_train=[]
     feature_test=[]
-    for i in range(50):
+    for i in range(t_number):
         feature_train.append(model.docvecs['0_%s' %i])
         for j in range(1,5):
             feature_train[i] = np.concatenate((feature_train[i], model.docvecs['%s'%j+'_%s' %i]), axis=0)
-    for i in range(150):
+    for i in range(200-t_number):
         feature_test.append(model.docvecs['0_%s' %i])
         for j in range(1,5):
-            feature_test[i] = np.concatenate((feature_test[i], model.docvecs['%s'%j+'_%s' %(i+50)]), axis=0)
+            feature_test[i] = np.concatenate((feature_test[i], model.docvecs['%s'%j+'_%s' %(i+t_number)]), axis=0)
 
     # test = textStemmer("As a client, I want to play in the casino and have a tons of games displayed in the main UI")
     # new_vector = model.infer_vector(test)

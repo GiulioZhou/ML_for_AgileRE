@@ -1,4 +1,4 @@
-import string, csv, numpy as np
+import ast, string, csv, numpy as np
 from sklearn.decomposition import PCA
 from sklearn.feature_selection import SelectPercentile, f_classif
 from textLearning import tfidfColumn, tfidfAll, getSemanticVector
@@ -17,14 +17,31 @@ def totalHistory(row,column):
 		sum += int(user_story[column])
 	return sum
 
+#convert the services matrix into a numpy array
+def servicesToArray(row):
+	list_services = ast.literal_eval(dataset[row][11]) #string to list
+	services= np.zeros(15*15, dtype=np.int)
+	for i, elem in enumerate(list_services):
+		service = np.asarray(elem)
+		services[i*15:i*15+service.shape[0]] = service
+	return services
+
+def servicesToList(row):
+	list_services = ast.literal_eval(dataset[row][11]) #string to list
+	services = [0]*(15*15)
+	for i, elem in enumerate(list_services):
+		services[i*15:i*15+len(list_services[i])] = list_services[i]
+	return services
+
 #Calculate the interesting data for a user story
 def getData(row):
 	result = []
 	for i in range(0,5):
 		result.append(charCounter(row, i))
-	for i in range(5,9):
+	for i in range(5,11):
 		#result.append(totalHistory(row, i))
 		result.append(int(dataset[row][i]))
+	result += servicesToList(row)
 	return tuple(result)
 
 #Provide the formatted data of the dataset
@@ -36,7 +53,7 @@ def getNumpyArray():
 
 def loadDataset():
 	global dataset
-	with open('prova.csv', 'rU') as csvfile:
+	with open('dataset.csv', 'rU') as csvfile:
 		dataset = list(csv.reader(csvfile, skipinitialspace=True, delimiter =";"))
 	# return getNumpyArray()
 
@@ -57,20 +74,19 @@ def processData(testBeginIndex, target):
 	loadDataset()
 	#Retrieve the numerical data
 	formatted_data = getNumpyArray()
-
-	label_train = formatted_data[:testBeginIndex, np.newaxis, target]
+ 	label_train = formatted_data[:testBeginIndex, np.newaxis, target]
 	label_test = formatted_data[testBeginIndex:, np.newaxis, target]
 
 	#Retrieve statistical information
 	feature_train, feature_test = tfidfAll(dataset, testBeginIndex)
 
-	for i in range (5,9):
+	for i in range (5,11+(15*15)):
 		if i != target:
 			feature_train = np.concatenate((feature_train,formatted_data[:testBeginIndex,np.newaxis, i]), axis=1)
 			feature_test = np.concatenate((feature_test,formatted_data[testBeginIndex:,np.newaxis, i]), axis=1)
 
 	#Retrieve semantical information
-	x,y = getSemanticVector(dataset)
+	x,y = getSemanticVector(dataset, testBeginIndex)
 	feature_train = np.concatenate((feature_train,x), axis=1)
 	feature_test = np.concatenate((feature_test,y), axis=1)
 
