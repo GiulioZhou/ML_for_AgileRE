@@ -2,24 +2,37 @@
 
 import numpy as np
 import xlsxwriter
-from sklearn import linear_model, svm, neighbors, tree
 
+from regression import testRegression
 from dataExtractor import processData
 
 import matplotlib.pyplot as plt
 
-USER_STORY = 0
-BUS_VALUE = 1
-ELABORATION = 2
-DEF_DONE = 3
-EXP_OUTPUT = 4
-LOC = 5
-N_CLASS = 6
-C_CLASS = 7
-EFFORT = 8
-TEST_REV = 9
-ENTROPY = 10
-SERVICES = 11
+def all_feature():
+	features = []
+	for i in range (1,7):
+		features.append(feature_option[i](i))
+	return features
+
+def retElem(elem):
+	return elem
+
+def ask_text(elem):
+	print "Select text fields. 0 for all"
+	printText()
+	selected = ask()
+	if 0 in selected:
+		selected = range(1,6)
+	return (elem,selected)
+
+def ask_numeric(elem):
+	print "Select numerical fields. 0 for all"
+	printNumerical()
+	selected = ask()
+	if 0 in selected:
+		selected = range(1,7)
+	return (elem,selected)
+
 
 #Clean away the 10% of points that have the largest residual errors
 def outlierCleaner(predictions, features, targets):
@@ -46,58 +59,47 @@ def display(feature_train, label_train, feature_test, label_test, pred):
 	plt.ylabel(LOC)
 	plt.show()
 
-#Ordinary Least Squares
-def testLinerRegression(trainx, trainy):
-	regr = linear_model.LinearRegression()
-	regr.fit(trainx, trainy)
-	return regr
 
-#Support Vector Machines
-def testSVMRegression(trainx, trainy, k, c):
-	regr = svm.SVR(kernel=k, C=c,gamma='auto')
-	regr.fit(trainx, trainy)
-	return regr
+feature_option = {
+	0: all_feature,
+	1: ask_text,
+	2: ask_numeric,
+	3: ask_numeric,
+	4: retElem,
+	5: retElem,
+	6: retElem,
+}
 
-#Nearest Neighbors regression
-def testNeighborsRegression(trainx, trainy, n_neighbors, weights, ls):
-	regr = neighbors.KNeighborsRegressor(n_neighbors, weights = weights, leaf_size = ls)
-	regr.fit(trainx, trainy)
-	return regr
-
-#Naive Bayes regression
-def testBayesRegression(trainx, trainy):
-	from sklearn.naive_bayes import GaussianNB
-	regr = GaussianNB()
-	regr.fit(trainx, trainy)
-	return regr
-
-#Decision Trees regression
-def testDTreeRegression(trainx, trainy, msl):
-	regr = tree.DecisionTreeRegressor(min_samples_leaf=msl)
-	regr.fit(trainx, trainy)
-	return regr
+def ask():
+	ask = raw_input()
+	return map(int, ask.split())
 
 def run():
 	TRAINING_NUMBER = input("Choose the training set number (<=200)")
 	if TRAINING_NUMBER <0 or TRAINING_NUMBER>200:
 		return
 	print "Choose a target"
-	print "1-LOC"
-	print "2-New Classes"
-	print "3-Changed Classes"
-	print "4-Effort"
-	print "5-N. Tests"
-	print "6-Entropy"
+	printNumerical()
 	target = input()+4
 
-	feature_train, feature_test, label_train, label_test = processData(TRAINING_NUMBER,target)
+	print "Select one or more features (separated by space), 0 for all the features"
+	printFeatures()
 
-	#reg = testLinerRegression(feature_train, label_train)
-	reg = testSVMRegression(feature_train, label_train.ravel(), "linear", 10)
-	#reg = testNeighborsRegression(feature_train, label_train, 25, "uniform", 15)
-	#reg = testBayesRegression(feature_train, label_train)
-	#reg = testDTreeRegression(feature_train, label_train, 3)
+	feature_string = ask()
+	if 0 in feature_string:
+		features = feature_option[0]()
+	else:
+		features = []
+		for i in feature_string:
+			features.append(feature_option[int(i)](int(i)))
+
+	feature_train, feature_test, label_train, label_test = processData(TRAINING_NUMBER,target, features)
+
+	# print "Choose algorithm"
+	# algorithm = input()
+	reg = testRegression(feature_train, label_train.ravel(), 2)
 	pred = reg.predict(feature_test)
+
 
 	#Not so useful so far
 	cleaned_data = []#outlierCleaner(pred, feature_train, label_test)
@@ -145,6 +147,30 @@ def run():
 
 	#display(feature_train, label_train, feature_test, label_test, pred)
 
+
+def printNumerical():
+	print "1-LOC"
+	print "2-New Classes"
+	print "3-Changed Classes"
+	print "4-Effort"
+	print "5-N. Tests"
+	print "6-Entropy"
+def printText():
+	print "1-User Story"
+	print "2-Business Value"
+	print "3-Elaboration"
+	print "4-Definition of done"
+	print "5-Expected output"
+def printFeatures():
+	print "1-Length"
+	print "2-Numerical values"
+	print "3-Numerical history"
+	print "4-Services"
+	print "5-Word frequency"
+	print "6-Semantic info"
+
+
 if __name__ == "__main__":
+	#TODO: Remove useless features, cross validation, parameters tunings
 	while True:
 		run()

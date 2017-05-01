@@ -3,28 +3,38 @@ from sklearn.decomposition import PCA
 from sklearn.feature_selection import SelectPercentile, f_classif
 from textLearning import tfidfColumn, tfidfAll, getSemanticVector
 
+def concatenate(first, second):
+	return np.concatenate((first, second), axis=1)
+
+def loadDataset():
+	global dataset
+	with open('dataset.csv', 'rU') as csvfile:
+		dataset = list(csv.reader(csvfile, skipinitialspace=True, delimiter =";"))
+
+#Principal Components Analysis
+def applyPCA(number, feature_train, feature_test):
+	pca = PCA(n_components=1, whiten=True).fit(feature_train)
+	return pca.transform(feature_train), pca.transform(feature_test)
+
+#Reduce the dimension of the array by selecting a percentile of the total features
+def doFeatureSelection (feature_train, feature_test, labels_train):
+	selector = SelectPercentile(f_classif, percentile=1)
+	selector.fit(feature_train, labels_train)
+	return selector.transform(feature_train), selector.transform(feature_test)
 
 #Count the words in a field
 def charCounter(row, column):
 	return len((str(dataset[row][column])).split())
 
+def getNumeric(row, column):
+	return int(dataset[row][column+4])
+
 #Sum of the previous values
 def totalHistory(row,column):
-	if column < 5 or column > 10:
-			return -1
 	sum=0
 	for user_story in dataset[:row]:
-		sum += int(user_story[column])
+		sum += int(user_story[column+4])
 	return sum
-
-#convert the services matrix into a numpy array
-def servicesToArray(row):
-	list_services = ast.literal_eval(dataset[row][11]) #string to list
-	services= np.zeros(15*15, dtype=np.int)
-	for i, elem in enumerate(list_services):
-		service = np.asarray(elem)
-		services[i*15:i*15+service.shape[0]] = service
-	return services
 
 def servicesToList(row):
 	list_services = ast.literal_eval(dataset[row][11]) #string to list
@@ -34,62 +44,50 @@ def servicesToList(row):
 	return services
 
 #Calculate the interesting data for a user story
-def getData(row):
+def getData(row, features_list, target):
 	result = []
-	for i in range(0,5):
-		result.append(charCounter(row, i))
-	for i in range(5,11):
-		#result.append(totalHistory(row, i))
-		result.append(int(dataset[row][i]))
-	result += servicesToList(row)
-	return tuple(result)
+	for elem in features_list:
+		if isinstance(elem, tuple):
+			for column in elem[1]:
+				if not (elem[0] != 1 and column == (target-4)):
+					result.append(getColumn[elem[0]](row, column))
+	if 4 in features_list:
+		result += servicesToList(row)
+	return result
 
-#Provide the formatted data of the dataset
-def getNumpyArray():
-	result = []
-	for count, user_story in enumerate(dataset):
-		result.append(getData(count))
-	return np.asarray(result)
+getColumn = {
+	1: charCounter,
+	2: getNumeric,
+	3: totalHistory,
+	4: servicesToList,
+}
 
-def loadDataset():
-	global dataset
-	with open('dataset.csv', 'rU') as csvfile:
-		dataset = list(csv.reader(csvfile, skipinitialspace=True, delimiter =";"))
-	# return getNumpyArray()
+def column(matrix, i):
+    return [int(row[i]) for row in matrix]
 
-def applyPCA(number, feature_train, feature_test):
-	pca = PCA(n_components=1, whiten=True).fit(feature_train)
-	return pca.transform(feature_train), pca.transform(feature_test)
-
-def doFeatureSelection (feature_train, feature_test, labels_train):
-	#Feature selection -> reduce the dimension of the array. However, since we don't have
-	#a big dataset, I believe that it is not really necessary
-	selector = SelectPercentile(f_classif, percentile=1)
-	selector.fit(feature_train, labels_train)
-	return selector.transform(feature_train), selector.transform(feature_test)
-
-
-def processData(testBeginIndex, target):
+def processData(testBeginIndex, target, features_list):
 	#Load data from CVS
 	loadDataset()
-	#Retrieve the numerical data
-	formatted_data = getNumpyArray()
- 	label_train = formatted_data[:testBeginIndex, np.newaxis, target]
-	label_test = formatted_data[testBeginIndex:, np.newaxis, target]
+	data = []
+	for count, user_story in enumerate(dataset):
+		data.append(getData(count, features_list, target))
+	formatted_data = np.asarray(data)
 
-	#Retrieve statistical information
-	feature_train, feature_test = tfidfAll(dataset, testBeginIndex)
+	if 5 in features_list:
+		#Retrieve statistical information
+		feature_train, feature_test = tfidfAll(dataset, testBeginIndex)
+		feature_train = concatenate(formatted_data[:testBeginIndex], feature_train)
+		feature_test = concatenate(formatted_data[testBeginIndex:],feature_test)
 
-	for i in range (5,11+(15*15)):
-		if i != target:
-			feature_train = np.concatenate((feature_train,formatted_data[:testBeginIndex,np.newaxis, i]), axis=1)
-			feature_test = np.concatenate((feature_test,formatted_data[testBeginIndex:,np.newaxis, i]), axis=1)
-
-	#Retrieve semantical information
-	x,y = getSemanticVector(dataset, testBeginIndex)
-	feature_train = np.concatenate((feature_train,x), axis=1)
-	feature_test = np.concatenate((feature_test,y), axis=1)
+	if 6 in features_list:
+		#Retrieve semantical information
+		x,y = getSemanticVector(dataset, testBeginIndex)
+		feature_train = concatenate(feature_train,x)
+		feature_test = concatenate(feature_test,y)
 
 	feature_train, feature_test = applyPCA(1,feature_train,feature_test)
+
+ 	label_train = np.asarray(column(dataset[:testBeginIndex], target))
+	label_test = np.asarray(column(dataset[testBeginIndex:], target))
 
 	return feature_train, feature_test, label_train, label_test
