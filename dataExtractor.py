@@ -1,6 +1,6 @@
 import ast, string, csv, numpy as np
 from sklearn.decomposition import PCA
-from sklearn.feature_selection import SelectPercentile, f_classif
+from sklearn.feature_selection import SelectPercentile, f_classif, RFE
 from textLearning import tfidfColumn, tfidfAll, getSemanticVector
 
 def concatenate(first, second):
@@ -16,22 +16,22 @@ def applyPCA(number, feature_train, feature_test):
 	pca = PCA(n_components=1, whiten=True).fit(feature_train)
 	return pca.transform(feature_train), pca.transform(feature_test)
 
-#Reduce the dimension of the array by selecting a percentile of the total features
-def doFeatureSelection (feature_train, feature_test, labels_train):
+#select the feature with higher score
+def fs_percentile (feature_train, feature_test, labels_train):
 	selector = SelectPercentile(f_classif, percentile=1)
 	selector.fit(feature_train, labels_train)
 	return selector.transform(feature_train), selector.transform(feature_test)
 
 #Count the words in a field
 def charCounter(row, column):
-	return len((str(dataset[row][column])).split())
+	return len((str(dataset[row][column-1])).split())
 
 def getNumeric(row, column):
 	return int(dataset[row][column+4])
 
 #Sum of the previous values
 def totalHistory(row,column):
-	sum=0
+	sum= int(dataset[row][column+4])
 	for user_story in dataset[:row]:
 		sum += int(user_story[column+4])
 	return sum
@@ -67,17 +67,31 @@ def column(matrix, i):
 
 def processData(testBeginIndex, target, features_list):
 	#Load data from CVS
-	loadDataset()
+	try:
+		dataset
+	except:
+		loadDataset()
 	data = []
 	for count, user_story in enumerate(dataset):
 		data.append(getData(count, features_list, target))
 	formatted_data = np.asarray(data)
 
+	feature_train = formatted_data[:testBeginIndex]
+	feature_test = formatted_data[testBeginIndex:]
+
 	if 5 in features_list:
 		#Retrieve statistical information
-		feature_train, feature_test = tfidfAll(dataset, testBeginIndex)
-		feature_train = concatenate(formatted_data[:testBeginIndex], feature_train)
-		feature_test = concatenate(formatted_data[testBeginIndex:],feature_test)
+		try:
+			x=np.load("./tfidf/tfidf%s"%testBeginIndex+"x.npy")
+			y=np.load("./tfidf/tfidf%s"%testBeginIndex+"y.npy")
+		except:
+			print "creating"
+			x,y = tfidfAll(dataset, testBeginIndex)
+			np.save("./tfidf/tfidf%s"%testBeginIndex+"x",x)
+			np.save("./tfidf/tfidf%s"%testBeginIndex+"y",y)
+
+		feature_train = concatenate(feature_train,x)
+		feature_test = concatenate(feature_test,y)
 
 	if 6 in features_list:
 		#Retrieve semantical information
@@ -85,9 +99,12 @@ def processData(testBeginIndex, target, features_list):
 		feature_train = concatenate(feature_train,x)
 		feature_test = concatenate(feature_test,y)
 
-	feature_train, feature_test = applyPCA(1,feature_train,feature_test)
-
- 	label_train = np.asarray(column(dataset[:testBeginIndex], target))
+	label_train = np.asarray(column(dataset[:testBeginIndex], target))
 	label_test = np.asarray(column(dataset[testBeginIndex:], target))
+	print feature_train.size
+	feature_train, feature_test = fs_percentile (feature_train, feature_test, label_train)
+
+	if feature_train != []:
+		feature_train, feature_test = applyPCA(1,feature_train,feature_test)
 
 	return feature_train, feature_test, label_train, label_test

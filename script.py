@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 import numpy as np
-import xlsxwriter
+import xlsxwriter, itertools
 
 from regression import testRegression
 from dataExtractor import processData
@@ -74,7 +74,7 @@ def ask():
 	ask = raw_input()
 	return map(int, ask.split())
 
-def run():
+def retrieveFeatures():
 	TRAINING_NUMBER = input("Choose the training set number (<=200)")
 	if TRAINING_NUMBER <0 or TRAINING_NUMBER>200:
 		return
@@ -92,7 +92,11 @@ def run():
 		features = []
 		for i in feature_string:
 			features.append(feature_option[int(i)](int(i)))
+	return features, TRAINING_NUMBER, target
 
+def run():
+
+	features, TRAINING_NUMBER, target = retrieveFeatures()
 	feature_train, feature_test, label_train, label_test = processData(TRAINING_NUMBER,target, features)
 
 	# print "Choose algorithm"
@@ -103,7 +107,6 @@ def run():
 
 	#Not so useful so far
 	cleaned_data = []#outlierCleaner(pred, feature_train, label_test)
-
 	#Refit if the data has been cleaned
 	if len(cleaned_data) > 0:
 		feature_train, label_train, errors = zip(*cleaned_data)
@@ -169,8 +172,46 @@ def printFeatures():
 	print "5-Word frequency"
 	print "6-Semantic info"
 
+def convertFeatures(f_tuple):
+	features = []
+	features.extend(((1,[]),(2,[]),(3,[])))
+	for elem in f_tuple:
+		if elem < 6:
+			features[0][1].append(elem)
+		if elem >5 and elem<12:
+			features[1][1].append(elem-5)
+		if elem >11 and elem<18:
+			features[2][1].append(elem-11)
+		if elem >17:
+			features.append(elem-14)
+	return features
+
+#Compute all the combinations of features
+#It's tooking too long to find all the scores (1048576 combinations)
+def automaticTests():
+	TRAINING_NUMBER = 50
+	target = 5 #LOC
+	#Save all the prediction in a xlsx file
+	workbook = xlsxwriter.Workbook('./partial_results/%s'%target +'_%s'%TRAINING_NUMBER+'.xlsx')
+	worksheet = workbook.add_worksheet()
+	line = 1
+	worksheet.write(0,0,"Features")
+	worksheet.write(0,1,"Score")
+	for L in range(0, len(max_features)+1):
+	    for subset in itertools.combinations(max_features, L):
+			features = convertFeatures(subset)
+			print features
+			feature_train, feature_test, label_train, label_test = processData(TRAINING_NUMBER,target, features)
+			if feature_train.size != 0:
+				reg = testRegression(feature_train, label_train.ravel(), 2)
+				pred = reg.predict(feature_test)
+				score = reg.score(feature_test, label_test)
+				print score
+				worksheet.write(line,0,str(features))
+				worksheet.write(line,1,score)
+				line += 1
+	workbook.close()
+
 
 if __name__ == "__main__":
-	#TODO: Remove useless features, cross validation, parameters tunings
-	while True:
-		run()
+	run()
