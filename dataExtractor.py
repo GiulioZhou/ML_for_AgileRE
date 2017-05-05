@@ -1,6 +1,6 @@
 import ast, string, csv, numpy as np
 from sklearn.decomposition import PCA
-from sklearn.feature_selection import SelectPercentile, f_classif, RFE
+from sklearn.feature_selection import SelectPercentile, f_regression, RFE, chi2
 from textLearning import tfidfColumn, tfidfAll, getSemanticVector
 
 def concatenate(first, second):
@@ -18,7 +18,7 @@ def applyPCA(number, feature_train, feature_test):
 
 #select the feature with higher score
 def fs_percentile (feature_train, feature_test, labels_train):
-	selector = SelectPercentile(f_classif, percentile=1)
+	selector = SelectPercentile(f_regression, percentile=1)
 	selector.fit(feature_train, labels_train)
 	return selector.transform(feature_train), selector.transform(feature_test)
 
@@ -72,9 +72,19 @@ def processData(testBeginIndex, target, features_list):
 	except:
 		loadDataset()
 	data = []
-	for count, user_story in enumerate(dataset):
-		data.append(getData(count, features_list, target))
-	formatted_data = np.asarray(data)
+
+	if features_list == [(1,[1,2,3,4,5]),(2,[1,2,3,4,5,6]),(3,[1,2,3,4,5,6]),4,5,6]:
+		try:
+			formatted_data = np.load("./npy/all_feature%s"%target+".npy")
+		except:
+			for count, user_story in enumerate(dataset):
+				data.append(getData(count, features_list, target))
+			formatted_data = np.asarray(data)
+			np.save("./npy/all_feature%s"%target,formatted_data)
+	else:
+		for count, user_story in enumerate(dataset):
+			data.append(getData(count, features_list, target))
+		formatted_data = np.asarray(data)
 
 	feature_train = formatted_data[:testBeginIndex]
 	feature_test = formatted_data[testBeginIndex:]
@@ -82,13 +92,12 @@ def processData(testBeginIndex, target, features_list):
 	if 5 in features_list:
 		#Retrieve statistical information
 		try:
-			x=np.load("./tfidf/tfidf%s"%testBeginIndex+"x.npy")
-			y=np.load("./tfidf/tfidf%s"%testBeginIndex+"y.npy")
+			x=np.load("./npy/tfidf%s"%testBeginIndex+"x.npy")
+			y=np.load("./npy/tfidf%s"%testBeginIndex+"y.npy")
 		except:
-			print "creating"
 			x,y = tfidfAll(dataset, testBeginIndex)
-			np.save("./tfidf/tfidf%s"%testBeginIndex+"x",x)
-			np.save("./tfidf/tfidf%s"%testBeginIndex+"y",y)
+			np.save("./npy/tfidf%s"%testBeginIndex+"x",x)
+			np.save("./npy/tfidf%s"%testBeginIndex+"y",y)
 
 		feature_train = concatenate(feature_train,x)
 		feature_test = concatenate(feature_test,y)
@@ -101,10 +110,9 @@ def processData(testBeginIndex, target, features_list):
 
 	label_train = np.asarray(column(dataset[:testBeginIndex], target))
 	label_test = np.asarray(column(dataset[testBeginIndex:], target))
-	print feature_train.size
+	#print feature_train.size
 	feature_train, feature_test = fs_percentile (feature_train, feature_test, label_train)
 
-	if feature_train != []:
-		feature_train, feature_test = applyPCA(1,feature_train,feature_test)
-
+	#if feature_train != []:
+		#feature_train, feature_test = applyPCA(1,feature_train,feature_test)
 	return feature_train, feature_test, label_train, label_test
