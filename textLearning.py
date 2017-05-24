@@ -21,7 +21,8 @@ def textStemmer(text):
     stemmed = ""
     for word in words:
         if is_ascii(word) and word not in stopwords.words('english'): #Some words have awkward characters in it and I don't know why so I just ignore them
-            stemmed = stemmed + stemmer.stem(word) + " "
+            #stemmed = stemmed + stemmer.stem(word) + " "
+            stemmed = stemmed + word + " "
     return stemmed
 
 def wordsToVector(word_data,testBeginIndex):
@@ -65,40 +66,61 @@ class TaggedLineSentence(object):
             #print '%s' %i +'_%s' % (idx/5)
             yield TaggedDocument(words=doc.split(),tags=['%s' %i +'_%s' % (idx/5)])
 
+def formatted_dataset(dataset):
+    global data
+    data = []
+    for i, elem in enumerate(dataset):
+        partial = []
+        for j in range(5):
+            partial += textStemmer(dataset[i][j]).split()
+        data.append(partial)
+
+def inferred_data():
+    global inferred
+    inferred = []
+    model = Doc2Vec.load("doc2vec.bin", mmap='r')
+    for i in range(200):
+        inferred.append(model.infer_vector(data[i], alpha=0.01, steps=1000))
 
 def getSemanticVector(dataset,t_number):
-    #Load the vocabulary if it was previously created
     try:
-        model = Doc2Vec.load("doc2vec.model")
+        data
     except:
-        data = []
-        for i, elem in enumerate(dataset):
-            for j in range(5):
-                data.append(textStemmer(dataset[i][j]))
-        labeled = TaggedLineSentence(data)
-        model = Doc2Vec(size=300, window=10, min_count=5, workers=11,alpha=0.025, min_alpha=0.025) #parametri a caso presi da un tutorial
-        model.build_vocab(labeled)
-        for epoch in range(50):
-            model.train(labeled,total_examples=model.corpus_count,epochs=model.iter)
-            model.alpha -= 0.002
-            model.min_alpha = model.alpha
-            model.train(labeled,total_examples=model.corpus_count,epochs=model.iter)
+        formatted_dataset(dataset)
+        inferred_data()
 
-        model.save("doc2vec.model")
-
-    feature_train=[]
-    feature_test=[]
-    for i in range(t_number):
-        feature_train.append(model.docvecs['0_%s' %i])
-        for j in range(1,5):
-            feature_train[i] = np.concatenate((feature_train[i], model.docvecs['%s'%j+'_%s' %i]), axis=0)
-    for i in range(200-t_number):
-        feature_test.append(model.docvecs['0_%s' %i])
-        for j in range(1,5):
-            feature_test[i] = np.concatenate((feature_test[i], model.docvecs['%s'%j+'_%s' %(i+t_number)]), axis=0)
-
-    # test = textStemmer("As a client, I want to play in the casino and have a tons of games displayed in the main UI")
-    # new_vector = model.infer_vector(test)
-    # print model.docvecs.most_similar([new_vector])
+    feature_train=inferred[:t_number]
+    feature_test=inferred[t_number:]
 
     return np.asarray(feature_train), np.asarray(feature_test)
+
+#Old verision
+#def getSemanticVector(dataset,t_number):
+    #Load the vocabulary if it was previously created
+    # try:
+    #     model = Doc2Vec.load("doc2vec.model")
+    # except:
+    #     data = []
+    #     for i, elem in enumerate(dataset):
+    #         for j in range(5):
+    #             data.append(textStemmer(dataset[i][j]))
+    #     labeled = TaggedLineSentence(data)
+    #     model = Doc2Vec(size=300, window=10, min_count=5, workers=11,alpha=0.025, min_alpha=0.025) #parametri a caso presi da un tutorial
+    #     model.build_vocab(labeled)
+    #     for epoch in range(50):
+    #         model.train(labeled,total_examples=model.corpus_count,epochs=model.iter)
+    #         model.alpha -= 0.002
+    #         model.min_alpha = model.alpha
+    #         model.train(labeled,total_examples=model.corpus_count,epochs=model.iter)
+    #
+    #     model.save("doc2vec.model")
+    #
+    # for i in range(t_number):
+    #     feature_train.append(model.docvecs['0_%s' %i])
+    #     for j in range(1,5):
+    #         feature_train[i] = np.concatenate((feature_train[i], model.docvecs['%s'%j+'_%s' %i]), axis=0)
+    # for i in range(200-t_number):
+    #     feature_test.append(model.docvecs['0_%s' %i])
+    #     for j in range(1,5):
+    #         feature_test[i] = np.concatenate((feature_test[i], model.docvecs['%s'%j+'_%s' %(i+t_number)]), axis=0)
+    # return np.asarray(feature_train), np.asarray(feature_test)

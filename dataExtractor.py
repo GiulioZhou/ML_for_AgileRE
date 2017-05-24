@@ -18,7 +18,7 @@ def applyPCA(number, feature_train, feature_test):
 
 #select the feature with higher score
 def fs_percentile (feature_train, feature_test, labels_train):
-	selector = SelectPercentile(f_regression, percentile=1)
+	selector = SelectPercentile(f_regression, percentile=10)
 	selector.fit(feature_train, labels_train)
 	return selector.transform(feature_train), selector.transform(feature_test)
 
@@ -31,7 +31,8 @@ def getNumeric(row, column):
 
 #Sum of the previous values
 def totalHistory(row,column):
-	sum= int(dataset[row][column+4])
+	#sum= int(dataset[row][column+4])
+	sum = 0
 	for user_story in dataset[:row]:
 		sum += int(user_story[column+4])
 	return sum
@@ -110,9 +111,12 @@ def processData(testBeginIndex, target, features_list):
 
 	label_train = np.asarray(column(dataset[:testBeginIndex], target))
 	label_test = np.asarray(column(dataset[testBeginIndex:], target))
-	#print feature_train.size
-	feature_train, feature_test = fs_percentile (feature_train, feature_test, label_train)
 
-	#if feature_train != []:
-		#feature_train, feature_test = applyPCA(1,feature_train,feature_test)
+
+
+	#print feature_train.size
+	#feature_train, feature_test = fs_percentile (feature_train, feature_test, label_train)
+
+	# if feature_train != []:
+	# 	feature_train, feature_test = applyPCA(1,feature_train,feature_test)
 	return feature_train, feature_test, label_train, label_test
