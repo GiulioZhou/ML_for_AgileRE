@@ -21,8 +21,8 @@ def textStemmer(text):
     stemmed = ""
     for word in words:
         if is_ascii(word) and word not in stopwords.words('english'): #Some words have awkward characters in it and I don't know why so I just ignore them
-            #stemmed = stemmed + stemmer.stem(word) + " "
-            stemmed = stemmed + word + " "
+            stemmed = stemmed + stemmer.stem(word) + " "
+            #stemmed = stemmed + word + " "
     return stemmed
 
 def wordsToVector(word_data,testBeginIndex):
@@ -77,10 +77,16 @@ def formatted_dataset(dataset):
 
 def inferred_data():
     global inferred
-    inferred = []
-    model = Doc2Vec.load("doc2vec.bin", mmap='r')
-    for i in range(200):
-        inferred.append(model.infer_vector(data[i], alpha=0.01, steps=1000))
+    try:
+        inferred = np.load("./inferred_text.npy")
+        model = Doc2Vec.load("doc2vec.bin", mmap='r')
+    
+    except:
+        tmp = []
+        for i in range(200):
+            tmp.append(model.infer_vector(data[i], alpha=0.01, steps=1000))
+        inferred = np.asarray(tmp)
+        np.save("inferred_text",inferred)
 
 def getSemanticVector(dataset,t_number):
     try:

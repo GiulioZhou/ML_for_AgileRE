@@ -117,6 +117,6 @@ def processData(testBeginIndex, target, features_list):
 	#print feature_train.size
 	#feature_train, feature_test = fs_percentile (feature_train, feature_test, label_train)
 
-	# if feature_train != []:
-	# 	feature_train, feature_test = applyPCA(1,feature_train,feature_test)
+	if feature_train != []:
+		feature_train, feature_test = applyPCA(1,feature_train,feature_test)
 	return feature_train, feature_test, label_train, label_test
