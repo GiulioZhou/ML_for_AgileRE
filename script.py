@@ -2,149 +2,84 @@
 
 import numpy as np
 import xlsxwriter, itertools
-from math import fabs
 
 from regression import testRegression
-from dataExtractor import processData, processDataClass
-from script_old import display
+from dataExtractor import processData
+from getFeatures import retrieveFeatures
+
+from math import fabs
 import matplotlib.pyplot as plt
 
-#brief description of the features
-#1 -> words counter for 1-user story, 2-business value, 3 etc....
-#2 -> numerical value for 1-LOC, 2-New calsses, 3 etc...
-#3 -> sum of the previous numerical value for 1-LOC etc...
-#4 -> services
-#5 -> tfidf
-#6 -> semantic -> doc2vec
+#Clean away the 10% of points that have the largest residual errors
+def outlierCleaner(predictions, features, targets):
+	cleaned_data = []
 
-#Fast way to test the different combinations of features
+	for count, elem in np.ndenumerate(predictions):
+		error = predictions[count] - targets[count]
+		cleaned_data.append((tuple(features[count[0]].tolist()), targets[count], error))
+
+	cleaned_data.sort(key=lambda tup: tup[2])
+
+	count = int(len(cleaned_data)*0.9)
+	cleaned_data = cleaned_data[:count]
+	return cleaned_data
+
+
+#Display the chart (Note that you can't display more than 1 feature, or it is just me that I am not able to :D)
+def display(feature_train, label_train, feature_test, label_test, pred):
+	plt.clf()
+	plt.scatter(feature_train, label_train, color="b", label="train data")
+	plt.scatter(feature_test, label_test, color="r", label="test data")
+	plt.plot(feature_test, pred, color="black", linewidth = 3)
+	plt.legend(loc=2)
+	plt.xlabel("Text info (after PCA)")
+	plt.ylabel("Effort")
+	plt.show()
+
+
 def run():
-	#all the features
-	#features = [(1,[1,2,3,4,5]),(2,[1,2,3,4,5,6]),(3,[1,2,3,4,5,6]),4,5,6]
-	features = [(1,[1,2,3,4,5]),5,6]
 
-	for target in range(5,11):
-		TRAINING_NUMBER = 200
-		#Save all the prediction in a xlsx file
-		workbook = xlsxwriter.Workbook('./partial_results/%s'%target +'.xlsx')
-		worksheet = workbook.add_worksheet()
-		j=0
-		print target
-		while TRAINING_NUMBER>40:
-			TRAINING_NUMBER -= 25
-			feature_train, feature_test, label_train, label_test = processData(TRAINING_NUMBER,target, features)
-
-			reg = testRegression(feature_train, label_train.ravel(), 2) #2 for svm
-			pred = reg.predict(feature_test)
-			score = reg.score(feature_test, label_test)
-			print score
-
-			#Write on the xlsx file
-			worksheet.write(0,j*4+0,"Pred")
-			worksheet.write(0,j*4+1,"Effective")
-			worksheet.write(0,j*4+2,"Error")
-			worksheet.write(0,j*4+3,"T_Number")
-			worksheet.write(1,j*4+3,TRAINING_NUMBER)
-			worksheet.write(4,j*4+3,"Score")
-			worksheet.write(5,j*4+3,score)
-			err_sum=0
-			for i in range(200-TRAINING_NUMBER):
-				effective=label_test[i]
-				prediction=int(reg.predict(feature_test[i].reshape(1,-1))[0])
-				worksheet.write(i+1,j*4+0,prediction)
-				worksheet.write(i+1,j*4+1,effective)
-				err = fabs(prediction-effective)
-				worksheet.write(i+1,j*4+2,err)
-				err_sum += err
-			worksheet.write(2,j*4+3,"Average error")
-			worksheet.write(3,j*4+3,int(err_sum/(200-TRAINING_NUMBER)))
-			j+=1
-		workbook.close()
-
-
-#Different test with classification
-def run_class():
-	#all the features
-	#features = [(1,[1,2,3,4,5]),(2,[1,2,3,4,5,6]),(3,[1,2,3,4,5,6]),4,5,6]
-	features = [(1,[1,2,3,4,5]),5,6]
-
-	for target in range(8,9):
-		TRAINING_NUMBER = 200
-		#Save all the prediction in a xlsx file
-		workbook = xlsxwriter.Workbook('./partial_results/%s'%target +'.xlsx')
-		worksheet = workbook.add_worksheet()
-		j=0
-		print target
-		while TRAINING_NUMBER>40:
-			TRAINING_NUMBER -= 25
-			feature_train, feature_test, label_train, label_test = processDataClass(TRAINING_NUMBER,target, features)
-
-			reg = testRegression(feature_train, label_train.ravel(), 6) #2 for svm
-			pred = reg.predict(feature_test)
-			score = reg.score(feature_test, label_test)
-			print score
-
-			X=np.concatenate((feature_train, feature_test),axis=0)
-			Y=np.concatenate((label_train, label_test),axis=0)
-
-			# Plot the decision boundary. For that, we will assign a color to each
-			# point in the mesh [x_min, x_max]x[y_min, y_max].
-			x_min, x_max = X[:, 0].min() - 1, X[:, 0].max() + 1
-			y_min, y_max = X[:, 1].min() - 1, X[:, 1].max() + 1
-			xx, yy = np.meshgrid(np.arange(x_min, x_max, 0.2), np.arange(y_min, y_max, 0.2))
-
-			Z = reg.predict(np.c_[xx.ravel(), yy.ravel()])
-
-			# Put the result into a color plot
-			Z = Z.reshape(xx.shape)
-			plt.contourf(xx, yy, Z, cmap=plt.cm.coolwarm, alpha=0.8)
-
-			# Plot also the training points
-			plt.scatter(X[:, 0], X[:, 1], c=Y,edgecolors ='k', cmap=plt.cm.coolwarm)
-			plt.xlabel('First PCA')
-			plt.ylabel('Second PCA')
-			plt.xlim(xx.min(), xx.max())
-			plt.ylim(yy.min(), yy.max())
-			plt.xticks(())
-			plt.yticks(())
-
-			#Write on the xlsx file
-			worksheet.write(0,j*4+0,"Pred")
-			worksheet.write(0,j*4+1,"Effective")
-			worksheet.write(0,j*4+2,"Error")
-			worksheet.write(0,j*4+3,"T_Number")
-			worksheet.write(1,j*4+3,TRAINING_NUMBER)
-			worksheet.write(4,j*4+3,"Score")
-			worksheet.write(5,j*4+3,score)
-			err_sum=0
-			for i in range(200-TRAINING_NUMBER):
-				effective=label_test[i]
-				prediction=int(reg.predict(feature_test[i].reshape(1,-1))[0])
-				worksheet.write(i+1,j*4+0,prediction)
-				worksheet.write(i+1,j*4+1,effective)
-				err = fabs(prediction-effective)
-				worksheet.write(i+1,j*4+2,err)
-				err_sum += err
-			worksheet.write(2,j*4+3,"Average error")
-			worksheet.write(3,j*4+3,int(err_sum/(200-TRAINING_NUMBER)))
-			j+=1
-		workbook.close()
-
-
-#Test with displaying
-def run_display():
-	#all the features
-	#features = [(1,[1,2,3,4,5]),(2,[1,2,3,4,5,6]),(3,[1,2,3,4,5,6]),4,5,6]
-	features = [(1,[1,2,3,4,5]),5,6]
-
-	feature_train, feature_test, label_train, label_test = processData(100,8, features)
-
-	reg = testRegression(feature_train, label_train.ravel(), 2) #2 for svm
+	#retrieveFeatures gets from terminal the information we want to process
+	features, TRAINING_NUMBER, target = retrieveFeatures()
+	feature_train, feature_test, label_train, label_test = processData(TRAINING_NUMBER,target, features)
+	reg = testRegression(feature_train, label_train.ravel(), 2)
 	pred = reg.predict(feature_test)
-	score = reg.score(feature_test, label_test)
 
-	display(feature_train, label_train, feature_test, label_test, pred)
+	#Not so useful so far
+	cleaned_data = []#outlierCleaner(pred, feature_train, label_test)
+	#Refit if the data has been cleaned
+	if len(cleaned_data) > 0:
+		feature_train, label_train, errors = zip(*cleaned_data)
+		feature_train = np.array(feature_train)
+		label_train = np.array(label_train)
+		reg.fit(feature_train, label_train)
+		pred = reg.predict(feature_test)
+
+	#Score -> (1- u/v) where u is the regression sum of squares, and v is the residual sum of squares
+	# u= sum((test-pred)^2) v= sum((test-testMean)^2)
+	print "R^2 score (1.0 is the best score)"
+	score = reg.score(feature_test, label_test)
+	print score
+
+	#Save all the prediction in a xlsx file
+	workbook = xlsxwriter.Workbook('./partial_results/%s'%target +'_%s'%TRAINING_NUMBER+'.xlsx')
+	worksheet = workbook.add_worksheet()
+	worksheet.write(0,0,"Pred")
+	worksheet.write(0,1,"Effective")
+	worksheet.write(0,2,"Error")
+	worksheet.write(0,5,"Score")
+	worksheet.write(1,5,score)
+
+	for i in range(200-TRAINING_NUMBER):
+		effective=label_test[i]
+		prediction=int(reg.predict(feature_test[i].reshape(1,-1))[0])
+		worksheet.write(i+1,0,prediction)
+		worksheet.write(i+1,1,effective)
+		worksheet.write(i+1,2,fabs(prediction-effective))
+	workbook.close()
+
+	print "Predictions saved!"
 
 
 if __name__ == "__main__":
-	run_class()
+	run()
