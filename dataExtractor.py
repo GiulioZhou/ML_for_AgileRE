@@ -13,7 +13,7 @@ def loadDataset():
 
 #Principal Components Analysis
 def applyPCA(number, feature_train, feature_test):
-	pca = PCA(n_components=1, whiten=True).fit(feature_train)
+	pca = PCA(n_components=number, whiten=True).fit(feature_train)
 	return pca.transform(feature_train), pca.transform(feature_test)
 
 #select the feature with higher score
@@ -115,8 +115,66 @@ def processData(testBeginIndex, target, features_list):
 
 
 	#print feature_train.size
-	#feature_train, feature_test = fs_percentile (feature_train, feature_test, label_train)
+	feature_train, feature_test = fs_percentile (feature_train, feature_test, label_train)
+
+	# if feature_train != []:
+	# 	feature_train, feature_test = applyPCA(1,feature_train,feature_test)
+	return feature_train, feature_test, label_train, label_test
+
+
+
+def processDataClass(testBeginIndex, target, features_list):
+	#Load data from CVS
+	try:
+		dataset
+	except:
+		loadDataset()
+	data = []
+
+	for count, user_story in enumerate(dataset):
+		data.append(getData(count, features_list, target))
+	formatted_data = np.asarray(data)
+
+	feature_train = formatted_data[:testBeginIndex]
+	feature_test = formatted_data[testBeginIndex:]
+
+	if 5 in features_list:
+		#Retrieve statistical information
+		try:
+			x=np.load("./npy/tfidf%s"%testBeginIndex+"x.npy")
+			y=np.load("./npy/tfidf%s"%testBeginIndex+"y.npy")
+		except:
+			x,y = tfidfAll(dataset, testBeginIndex)
+			np.save("./npy/tfidf%s"%testBeginIndex+"x",x)
+			np.save("./npy/tfidf%s"%testBeginIndex+"y",y)
+
+		feature_train = concatenate(feature_train,x)
+		feature_test = concatenate(feature_test,y)
+
+	if 6 in features_list:
+		#Retrieve semantical information
+		x,y = getSemanticVector(dataset, testBeginIndex)
+		feature_train = concatenate(feature_train,x)
+		feature_test = concatenate(feature_test,y)
+
+	label = []
+	for i in range(200):
+		j = int(dataset[i][target])
+		if j < 0:
+			label.append(0)
+		else:
+			if j < 10:
+			 	label.append(1)
+			else:
+				label.append(2)
+
+	label_train = np.asarray(label[:testBeginIndex])
+	label_test = np.asarray(label[testBeginIndex:])
+
+	#print feature_train.size
+	feature_train, feature_test = fs_percentile (feature_train, feature_test, label_train)
 
 	if feature_train != []:
-		feature_train, feature_test = applyPCA(1,feature_train,feature_test)
+		feature_train, feature_test = applyPCA(2,feature_train,feature_test)
+
 	return feature_train, feature_test, label_train, label_test

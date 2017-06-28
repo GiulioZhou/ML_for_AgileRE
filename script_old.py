@@ -24,6 +24,7 @@ def outlierCleaner(predictions, features, targets):
 	cleaned_data = cleaned_data[:count]
 	return cleaned_data
 
+
 #Display the chart (Note that you can't display more than 1 feature, or it is just me that I am not able to :D)
 def display(feature_train, label_train, feature_test, label_test, pred):
 	plt.clf()
@@ -31,8 +32,8 @@ def display(feature_train, label_train, feature_test, label_test, pred):
 	plt.scatter(feature_test, label_test, color="r", label="test data")
 	plt.plot(feature_test, pred, color="black", linewidth = 3)
 	plt.legend(loc=2)
-	plt.xlabel(ELABORATION)
-	plt.ylabel(LOC)
+	plt.xlabel("Text info (after PCA)")
+	plt.ylabel("Effort")
 	plt.show()
 
 
@@ -79,15 +80,6 @@ def run():
 
 	print "Predictions saved!"
 
-	#Provide the prediction for a specific user story
-	# while True:
-	# 	number = input("Choose a user story 50-199, -1 to exit\n")
-	# 	if number == -1 or number <TRAINING_NUMBER or number >199:
-	# 		break
-	# 	else:
-	# 		print int(reg.predict(feature_test[number-TRAINING_NUMBER])[0].reshape(-1,1))
-
-	#display(feature_train, label_train, feature_test, label_test, pred)
 
 if __name__ == "__main__":
 	run()

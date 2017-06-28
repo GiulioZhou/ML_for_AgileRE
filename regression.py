@@ -12,6 +12,11 @@ def testSVMRegression(trainx, trainy):
 	regr.fit(trainx, trainy)
 	return regr
 
+def testSVMClassifier(trainx, trainy):
+	clf = svm.SVC(C=1)
+	clf.fit(trainx, trainy)
+	return clf
+
 #Nearest Neighbors regression
 def testNeighborsRegression(trainx, trainy):
 	regr = neighbors.KNeighborsRegressor( 25, weights = "uniform", leaf_size = 15)
@@ -37,6 +42,7 @@ regression = {
     3: testNeighborsRegression,
     4: testBayesRegression,
     5: testDTreeRegression,
+	6: testSVMClassifier
 }
 
 def testRegression(feature_train, label_train, algorithm):

@@ -80,7 +80,7 @@ def inferred_data():
     try:
         inferred = np.load("./inferred_text.npy")
         model = Doc2Vec.load("doc2vec.bin", mmap='r')
-    
+
     except:
         tmp = []
         for i in range(200):
@@ -99,34 +99,3 @@ def getSemanticVector(dataset,t_number):
     feature_test=inferred[t_number:]
 
     return np.asarray(feature_train), np.asarray(feature_test)
-
-#Old verision
-#def getSemanticVector(dataset,t_number):
-    #Load the vocabulary if it was previously created
-    # try:
-    #     model = Doc2Vec.load("doc2vec.model")
-    # except:
-    #     data = []
-    #     for i, elem in enumerate(dataset):
-    #         for j in range(5):
-    #             data.append(textStemmer(dataset[i][j]))
-    #     labeled = TaggedLineSentence(data)
-    #     model = Doc2Vec(size=300, window=10, min_count=5, workers=11,alpha=0.025, min_alpha=0.025) #parametri a caso presi da un tutorial
-    #     model.build_vocab(labeled)
-    #     for epoch in range(50):
-    #         model.train(labeled,total_examples=model.corpus_count,epochs=model.iter)
-    #         model.alpha -= 0.002
-    #         model.min_alpha = model.alpha
-    #         model.train(labeled,total_examples=model.corpus_count,epochs=model.iter)
-    #
-    #     model.save("doc2vec.model")
-    #
-    # for i in range(t_number):
-    #     feature_train.append(model.docvecs['0_%s' %i])
-    #     for j in range(1,5):
-    #         feature_train[i] = np.concatenate((feature_train[i], model.docvecs['%s'%j+'_%s' %i]), axis=0)
-    # for i in range(200-t_number):
-    #     feature_test.append(model.docvecs['0_%s' %i])
-    #     for j in range(1,5):
-    #         feature_test[i] = np.concatenate((feature_test[i], model.docvecs['%s'%j+'_%s' %(i+t_number)]), axis=0)
-    # return np.asarray(feature_train), np.asarray(feature_test)
